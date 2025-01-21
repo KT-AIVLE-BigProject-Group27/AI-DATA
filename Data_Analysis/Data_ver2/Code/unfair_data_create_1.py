@@ -1750,4 +1750,40 @@ all_labels = (
 import pandas as pd
 columns = ["article_number", "clause_number", "sub_clause_number", "unfair_label", "law_acticle", "content"]
 df = pd.DataFrame(all_labels, columns=columns)
-df.to_csv("./Data_Analysis/Data_ver2/Data/unfair_article_14.csv", index=False, encoding="utf-8-sig")
+df.to_csv("./Data_Analysis/Data_ver2/Data/unfair_article_14_train.csv", index=False, encoding="utf-8-sig")
+
+
+t1_1_1_label = to_list(t1_1_1,s_1_label)
+t2_1_1_label = to_list(t2_1_1,s_1_label)
+t3_1_1_label = to_list(t3_1_1,s_1_label)
+
+t1_2_1_label = to_list(t1_2_1,s_2_label)
+t2_2_1_label = to_list(t2_2_1,s_2_label)
+t3_2_1_label = to_list(t3_2_1,s_2_label)
+
+t1_3_1_label = to_list(t1_3_1,s_3_label)
+t2_3_1_label = to_list(t2_3_1,s_3_label)
+t3_3_1_label = to_list(t3_3_1,s_3_label)
+
+t1_4_1_label = to_list(t1_4_1,s_4_label)
+t2_4_1_label = to_list(t2_4_1,s_4_label)
+t3_4_1_label = to_list(t3_4_1,s_4_label)
+
+t1_new_1_label = to_list(t1_new_1,s_new_label)
+t2_new_1_label = to_list(t2_new_1,s_new_label)
+t3_new_1_label = to_list(t3_new_1,s_new_label)
+
+
+
+# 모든 변수를 합치는 코드
+test_labels = (
+    t1_1_1_label + t2_1_1_label + t3_1_1_label +
+    t1_2_1_label + t2_2_1_label + t3_2_1_label +
+    t1_3_1_label + t2_3_1_label + t3_3_1_label +
+    t1_4_1_label + t2_4_1_label + t3_4_1_label +
+    t1_new_1_label + t2_new_1_label + t3_new_1_label
+)
+
+columns = ["article_number", "clause_number", "sub_clause_number", "unfair_label", "law_acticle", "content"]
+df = pd.DataFrame(test_labels, columns=columns)
+df.to_csv("./Data_Analysis/Data_ver2/Data/unfair_article_14_test.csv", index=False, encoding="utf-8-sig")
