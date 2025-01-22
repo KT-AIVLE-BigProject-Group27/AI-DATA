@@ -1862,7 +1862,8 @@ all_labels = (
     s1_4_1_label + s2_4_1_label + s3_4_1_label + s4_4_1_label + s5_4_1_label + s6_4_1_label +
     s1_4_2_label + s2_4_2_label + s3_4_2_label + s4_4_2_label + s5_4_2_label + s6_4_2_label +
     s1_new_1_label + s2_new_1_label + s3_new_1_label + s4_new_1_label + s5_new_1_label + s6_new_1_label +
-    s1_new_2_label + s2_new_2_label + s3_new_2_label + s4_new_2_label + s5_new_2_label + s6_new_2_label
+    s1_new_2_label + s2_new_2_label + s3_new_2_label + s4_new_2_label + s5_new_2_label + s6_new_2_label +
+    s1_1_3_label + s2_1_3_label + s3_1_3_label + s4_1_3_label + s5_1_3_label + s6_1_3_label
 )
 
 
