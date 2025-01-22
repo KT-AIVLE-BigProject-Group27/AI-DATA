@@ -38,13 +38,45 @@ class BertMLPClassifier(nn.Module):
         return self.sigmoid(x)  # 0~1 확률값 반환
 
 
-# ✅ 계약서 문장 데이터 로드
-df = pd.read_csv('./Data_Analysis/Data_ver2/Data/unfair_article_14_first_preprocessing_train_data.csv')[['sentence','unfair_label']]  # sentence, label 컬럼
-
-# ✅ Train/Test 데이터 분할 (8:2 비율)
-X_train, X_val, y_train, y_val = train_test_split(
-    df["sentence"].tolist(), df["unfair_label"].tolist(), test_size=0.2, random_state=42, stratify=df["unfair_label"],shuffle=True
+directory_path = './Data_Analysis/Data_ver2/Data/'
+files_to_merge = [f for f in os.listdir(directory_path) if 'preprocessing' in f and f.endswith('.csv')]
+merged_df = pd.DataFrame()
+for file in files_to_merge:
+    file_path = os.path.join(directory_path, file)
+    df = pd.read_csv(file_path)
+    print(f'{file}: {len(df)}')
+    merged_df = pd.concat([merged_df, df], ignore_index=True)
+print(f'merged_df: {len(merged_df)}')
+x_temp, x_test, y_temp, y_test = train_test_split(
+    merged_df["sentence"].tolist(),
+    merged_df[["unfair_label", "article_number"]],  # DataFrame으로 두 열 선택
+    test_size=0.1,
+    random_state=42,
+    stratify=merged_df[["article_number", "unfair_label"]],  # 두 개의 컬럼을 기준으로 stratify
+    shuffle=True
 )
+
+# y_temp에서 'unfair_label'과 'article_number'를 분리
+y_temp_labels = y_temp["unfair_label"]
+y_temp_articles = y_temp["article_number"]
+
+# 두 번째 Train/Val 데이터 분할 (8:2 비율)
+# stratify에 article_number와 unfair_label 결합하여 두 기준을 동시에 고려하도록 함
+X_train, X_val, y_train, y_val = train_test_split(
+    x_temp,
+    y_temp_labels,  # unfair_label만 사용
+    test_size=0.2,
+    random_state=42,
+    stratify=y_temp[["article_number", "unfair_label"]],  # 두 기준을 동시에 stratify
+    shuffle=True
+)
+
+print(f'Length of X_train (train data): {len(X_train)}')
+print(f'Length of y_train (train labels): {len(y_train)}')
+print(f'Length of X_val (validation data): {len(X_val)}')
+print(f'Length of y_val (validation labels): {len(y_val)}')
+print(f'Length of x_test (test data): {len(x_test)}')
+print(f'Length of y_test (test labels): {len(y_test)}')
 
 # ✅ 토큰화 및 텐서 변환 함수
 def tokenize_data(sentences, tokenizer, max_length=256):
@@ -193,9 +225,6 @@ def predict_unfair_clause(c_model, sentence, threshold=0.5):
         "predicted_label": "불공정" if unfair_prob >= threshold else "합법"
     }
 
-# ✅ 테스트 데이터 (문장과 정답 레이블 분리)
-test_data = pd.read_csv('./Data_Analysis/Data_ver2/Data/unfair_article_14_first_preprocessing_test_data.csv')[['sentence','unfair_label']]
-
 # ✅ 모델 저장 (state_dict만 저장)
 def load_trained_model(model_file):
     # ✅ 모델 객체를 새로 생성한 후 state_dict만 로드해야 함
@@ -221,7 +250,7 @@ y_pred = []
 y_true = []
 threshold = 0.5011
 
-for sentence, label in test_data:
+for sentence, label in zip(x_test, y_test["unfair_label"]):
     result = predict_unfair_clause(loaded_model,sentence,threshold)
     print(f"📝 계약 조항: {result['sentence']}")
     print(f"🔍 판별 결과: {result['predicted_label']} (위반 확률: {result['unfair_probability']}%)")
@@ -229,8 +258,6 @@ for sentence, label in test_data:
     print("-" * 50)
     y_pred.append(1 if result['unfair_probability'] >= threshold else 0)
     y_true.append(label)
-
-
 
 # ✅ 성능 지표 계산
 accuracy = accuracy_score(y_true, y_pred)

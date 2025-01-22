@@ -63,52 +63,38 @@ def article_to_sentences(article_number, article_content):
         sentences.append([article_number, 0, 0, article_content.strip()])
     return sentences
 
-train = pd.read_csv('C:/Users/User/Desktop/bigp/AI-DATA/Data_Analysis/Data_ver2/Data/unfair_article_14_train.csv')
-test = pd.read_csv('C:/Users/User/Desktop/bigp/AI-DATA/Data_Analysis/Data_ver2/Data/unfair_article_14_test.csv')
+def preprocessing(data_path,save_path):
+    raw_data = pd.read_csv(data_path)
+    data = []
+    tmt = ''
+    for index, row in raw_data.iterrows():
+        if tmt != row['content']:
+            sentences = article_to_sentences(row['article_number'], row['content'])
+            tmt = row['content']
 
-# Iterate through rows in the DataFrame
-train_data = []
-tmt = ''
-for index, row in train.iterrows():
-    if tmt != row['content']:
-        sentences = article_to_sentences(row['article_number'], row['content'])
-        tmt = row['content']
+        for sentence in sentences:
+            if row['sub_clause_number'] ==0:
+                unfair_label = row['unfair_label']
+                law_article = row['law_article']
+                article_number = row['article_number']
+                if [row['article_number'], row['clause_number'], row['sub_clause_number']] == sentence[0:3]:
+                    data.append([sentence[3], row['unfair_label'], row['law_article'],row['article_number']])
+                    break
+            else:
+                if [row['article_number'], row['clause_number'], row['sub_clause_number']] == sentence[0:3]:
+                    data.append([sentence[3], unfair_label, law_article, article_number])
+                    break
 
-    for sentence in sentences:
-        if row['sub_clause_number'] ==0:
-            label = row['unfair_label']
-            article = row['law_acticle']
-            if [row['article_number'], row['clause_number'], row['sub_clause_number']] == sentence[0:3]:
-                train_data.append([sentence[3], row['unfair_label'], row['law_acticle']])
-                break
-        else:
-            if [row['article_number'], row['clause_number'], row['sub_clause_number']] == sentence[0:3]:
-                train_data.append([sentence[3], label, article])
-                break
+    df = pd.DataFrame(data, columns=["sentence", "unfair_label", "law_article","article_number"])
+    df_deduplicated = df.drop_duplicates()
+    df_deduplicated.to_csv(save_path, index=False, encoding="utf-8-sig")
 
-train_df = pd.DataFrame(train_data, columns=["sentence", "unfair_label", "law_acticle"])
-train_df_deduplicated = train_df.drop_duplicates()
+    return  df_deduplicated
 
-train_df_deduplicated.to_csv("C:/Users/User/Desktop/bigp/AI-DATA/Data_Analysis/Data_ver2/Data/unfair_article_14_first_preprocessing_train_data.csv", index=False, encoding="utf-8-sig")
 
-test_data = []
-tmt = ''
-for index, row in test.iterrows():
-    if tmt != row['content']:
-        sentences = article_to_sentences(row['article_number'], row['content'])
-        tmt = row['content']
 
-    for sentence in sentences:
-        if row['sub_clause_number'] ==0:
-            label = row['unfair_label']
-            article = row['law_acticle']
-            if [row['article_number'], row['clause_number'], row['sub_clause_number']] == sentence[0:3]:
-                test_data.append([sentence[3], row['unfair_label'], row['law_acticle']])
-                break
-        else:
-            if [row['article_number'], row['clause_number'], row['sub_clause_number']] == sentence[0:3]:
-                test_data.append([sentence[3], label, article])
-                break
-test_df = pd.DataFrame(test_data, columns=["sentence", "unfair_label", "law_acticle"])
-test_df_deduplicated = test_df.drop_duplicates()
-test_df_deduplicated.to_csv("C:/Users/User/Desktop/bigp/AI-DATA/Data_Analysis/Data_ver2/Data/unfair_article_14_first_preprocessing_test_data.csv", index=False, encoding="utf-8-sig")
+
+data_path = 'C:/Users/User/Desktop/bigp/AI-DATA/Data_Analysis/Data_ver2/Data/unfair_article_6.csv'
+save_path =  "C:/Users/User/Desktop/bigp/AI-DATA/Data_Analysis/Data_ver2/Data/unfair_article_6_first_preprocessing.csv"
+
+print(preprocessing(data_path,save_path))
