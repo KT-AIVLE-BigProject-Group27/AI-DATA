@@ -32,8 +32,15 @@ def split_once_by_sub_clauses(content):
         result.append(clause_content)
     return result
 
+def replace_date_with_placeholder(content):
+    # 날짜 형식: 2023. 01. 01. => 2023-01-01
+    content_with_placeholder = re.sub(r"(\d{4})\.\s(\d{2})\.\s(\d{2}).", r"\1-\2-\3", content)
+    return content_with_placeholder
+
 
 def article_to_sentences(article_number, article_content):
+    article_content = replace_date_with_placeholder(article_content)
+    print(article_content)
     article_content = article_content.replace('“','').replace('”','').replace('”','').replace('\n', '').replace('<표>','')
     symtostr = {
         "①": "1", "②": "2", "③": "3", "④": "4", "⑤": "5",
@@ -45,22 +52,24 @@ def article_to_sentences(article_number, article_content):
         for i in range(0, len(clause_sections), 2):
             clause_number = clause_sections[i].strip()
             clause_content = clause_sections[i + 1].strip()
-            sentences.append([article_number, int(symtostr[clause_number].strip()), 0, clause_number + ' ' + clause_content.split('1.')[0]])
+            sentences.append([article_number, int(symtostr[clause_number].strip()), 0, clause_number.strip() + ' ' + clause_content.split('1.')[0].strip()])
             if '1.' in clause_content:
                 sub_clause_sections = split_once_by_sub_clauses(clause_content)
                 for j in range(0, len(sub_clause_sections), 2):
                     sub_clause_number = sub_clause_sections[j].strip()
                     sub_clause_content = sub_clause_sections[j+1].strip()
-                    sentences.append([article_number, int(symtostr[clause_number]), int(sub_clause_number.split('.')[0]), clause_number + ' ' + clause_content.split('1.')[0] + sub_clause_number + ' '+ sub_clause_content])
+                    sentences.append([article_number, int(symtostr[clause_number]), int(sub_clause_number.split('.')[0]), clause_number.strip() + ' ' + clause_content.split('1.')[0].strip() +' ' + sub_clause_number.strip() + ' '+ sub_clause_content.strip()])
     elif '1.' in article_content:
+        article_content = article_content.split(']')[1]
         sub_clause_sections = split_once_by_sub_clauses(article_content)
-        sentences.append([article_number, 0, 0, article_content.strip()])
+        sentences.append([article_number, 0, 0, str(article_number).strip() + ' ' + article_content.split('1.')[0].strip()])
         for j in range(0, len(sub_clause_sections), 2):
             sub_clause_number = sub_clause_sections[j].strip()
             sub_clause_content = sub_clause_sections[j + 1].strip()
-            sentences.append([article_number, 0, int(sub_clause_number.split('.')[0]), article_content.split('1.')[0] + ' ' + sub_clause_content])
+            sentences.append([article_number, 0, int(sub_clause_number.split('.')[0]), str(article_number).strip() + ' ' + article_content.split('1.')[0].strip() + ' ' + sub_clause_number.strip() + ' ' + sub_clause_content.strip()])
     else:
-        sentences.append([article_number, 0, 0, article_content.strip()])
+        article_content = article_content.split(']')[1]
+        sentences.append([article_number, 0, 0, str(article_number).strip() + ' ' + article_content.strip()])
     return sentences
 
 def preprocessing(data_path,save_path):
@@ -69,8 +78,10 @@ def preprocessing(data_path,save_path):
     tmt = ''
     for index, row in raw_data.iterrows():
         if tmt != row['content']:
+            print(row['content'])
             sentences = article_to_sentences(row['article_number'], row['content'])
             tmt = row['content']
+
 
         for sentence in sentences:
             if row['sub_clause_number'] ==0:
@@ -94,7 +105,7 @@ def preprocessing(data_path,save_path):
 
 
 
-data_path = 'C:/Users/User/Desktop/bigp/AI-DATA/Data_Analysis/Data_ver2/Data/unfair_article_6.csv'
-save_path =  "C:/Users/User/Desktop/bigp/AI-DATA/Data_Analysis/Data_ver2/Data/unfair_article_6_first_preprocessing.csv"
+data_path = 'C:/Users/User/Desktop/bigp/AI-DATA/Data_Analysis/Data_ver2/Data/unfair_article_17.csv'
+save_path =  "C:/Users/User/Desktop/bigp/AI-DATA/Data_Analysis/Data_ver2/Data/unfair_article_17_first_preprocessing.csv"
 
 print(preprocessing(data_path,save_path))

@@ -64,6 +64,7 @@ def hwp5txt_to_string(hwp5txt, hwp_path):
         encoding='utf-8',
         errors='ignore'
     )
+    print(result.stderr)
     extracted_text = result.stdout
     return extracted_text
 
