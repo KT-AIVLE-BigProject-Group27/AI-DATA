@@ -78,10 +78,8 @@ def preprocessing(data_path,save_path):
     tmt = ''
     for index, row in raw_data.iterrows():
         if tmt != row['content']:
-            print(row['content'])
             sentences = article_to_sentences(row['article_number'], row['content'])
             tmt = row['content']
-
 
         for sentence in sentences:
             if row['sub_clause_number'] ==0:
@@ -103,9 +101,7 @@ def preprocessing(data_path,save_path):
     return  df_deduplicated
 
 
-
-
-data_path = 'C:/Users/User/Desktop/bigp/AI-DATA/Data_Analysis/Data_ver2/Data/unfair_article_17.csv'
-save_path =  "C:/Users/User/Desktop/bigp/AI-DATA/Data_Analysis/Data_ver2/Data/unfair_article_17_first_preprocessing.csv"
+data_path = './Data_Analysis/Data_ver2/Data/unfair_article_11.csv'
+save_path =  "./Data_Analysis/Data_ver2/Data/unfair_article_11_first_preprocessing.csv"
 
 print(preprocessing(data_path,save_path))
