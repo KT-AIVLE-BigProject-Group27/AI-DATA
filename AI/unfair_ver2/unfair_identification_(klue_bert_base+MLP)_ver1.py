@@ -7,16 +7,15 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 import os
 
-name = 'unfair_identification_14article_(klue_bert_base+MLP)_ver1_1차'
+name = 'unfair_identification_(klue_bert_base+MLP)_ver1_1차'
 # ✅ KLUE/BERT 토크나이저 및 모델 로드
 model_name = "klue/bert-base"
 tokenizer = BertTokenizer.from_pretrained(model_name)
 
 # ✅ 저장할 디렉토리 설정 (폴더 없으면 생성)
-save_path = f"D:/KT_AIVLE_BigProject/Model/ver2/unfair_identification_(MLP)_ver1_1차/{name}/"
+save_path = f"E:/Model/ver2/{name}/"
 os.makedirs(save_path, exist_ok=True)
 model_file = os.path.join(save_path, "klue_bert_mlp.pth")
-
 
 class BertMLPClassifier(nn.Module):
     def __init__(self, bert_model_name="klue/bert-base", hidden_size=256):
@@ -38,13 +37,16 @@ class BertMLPClassifier(nn.Module):
         return self.sigmoid(x)  # 0~1 확률값 반환
 
 
-directory_path = './Data_Analysis/Data_ver2/Data/'
+directory_path = './Data_Analysis/Data_ver2/unfair_data/'
 files_to_merge = [f for f in os.listdir(directory_path) if 'preprocessing' in f and f.endswith('.csv')]
 merged_df = pd.DataFrame()
 for file in files_to_merge:
     file_path = os.path.join(directory_path, file)
     df = pd.read_csv(file_path)
-    print(f'{file}: {len(df)}')
+    print("*"*50)
+    print(f'{file}')
+    print(f'len-{len(df)}')
+    print(f'--NaN-- \n {df.isna().sum()}')
     merged_df = pd.concat([merged_df, df], ignore_index=True)
 print(f'merged_df: {len(merged_df)}')
 x_temp, x_test, y_temp, y_test = train_test_split(
@@ -89,8 +91,8 @@ def tokenize_data(sentences, tokenizer, max_length=256):
 X_train_ids, X_train_mask = tokenize_data(X_train, tokenizer)
 X_val_ids, X_val_mask = tokenize_data(X_val, tokenizer)
 
-y_train_tensor = torch.tensor(y_train, dtype=torch.float32).unsqueeze(1)  # [batch, 1] 형태
-y_val_tensor = torch.tensor(y_val, dtype=torch.float32).unsqueeze(1)
+y_train_tensor = torch.tensor(y_train.values, dtype=torch.float32).unsqueeze(1)  # [batch, 1] 형태
+y_val_tensor = torch.tensor(y_val.values, dtype=torch.float32).unsqueeze(1)
 
 
 
@@ -123,14 +125,24 @@ import matplotlib.pyplot as plt
 # ✅ 모델 학습 함수 수정
 # ✅ 손실 그래프 저장 함수
 def plot_loss_curve(train_losses, val_losses, save_path):
-    plt.figure(figsize=(10, 6))
-    plt.plot(train_losses, label="Train Loss", marker="o")
-    plt.plot(val_losses, label="Validation Loss", marker="o")
-    plt.xlabel("Epochs")
-    plt.ylabel("Loss")
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+
+    # Train Loss 축
+    ax1.plot(train_losses, label="Train Loss", marker="o", color="blue")
+    ax1.set_xlabel("Epochs")
+    ax1.set_ylabel("Train Loss", color="blue")
+    ax1.tick_params(axis="y", labelcolor="blue")
+    ax1.grid(True)
+
+    # Validation Loss 축
+    ax2 = ax1.twinx()
+    ax2.plot(val_losses, label="Validation Loss", marker="o", color="red")
+    ax2.set_ylabel("Validation Loss", color="red")
+    ax2.tick_params(axis="y", labelcolor="red")
+
+    # 제목 및 범례 추가
     plt.title("Training and Validation Loss")
-    plt.legend()
-    plt.grid(True)
+    fig.tight_layout()
     plt.savefig(save_path)  # 이미지로 저장
     print(f"✅ Loss 그래프 저장 완료: {save_path}")
     plt.close()
@@ -160,7 +172,8 @@ def train_model(model, train_loader, val_loader, epochs=10, patience=3):
             loss.backward()
             optimizer.step()
 
-            total_loss += loss.item()
+            total_loss += loss.item()  # 단순 배치 평균
+        train_loss = total_loss / len(train_loader)  # 배치 평균으로 통일
 
         # ✅ 검증 단계
         model.eval()
@@ -174,7 +187,7 @@ def train_model(model, train_loader, val_loader, epochs=10, patience=3):
         val_loss /= len(val_loader)
 
         # ✅ 손실 저장
-        train_loss_list.append(total_loss)
+        train_loss_list.append(train_loss)
         val_loss_list.append(val_loss)
 
         # ✅ ReduceLROnPlateau 적용
@@ -222,7 +235,7 @@ def predict_unfair_clause(c_model, sentence, threshold=0.5):
     return {
         "sentence": sentence,
         "unfair_probability": round(unfair_prob * 100, 2),  # 1(불공정) 확률
-        "predicted_label": "불공정" if unfair_prob >= threshold else "합법"
+        "predicted_label": "위반" if unfair_prob >= threshold else "합법"
     }
 
 # ✅ 모델 저장 (state_dict만 저장)
@@ -249,13 +262,14 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 y_pred = []
 y_true = []
 threshold = 0.5011
-
+print(f'test: {len(x_test)}')
 for sentence, label in zip(x_test, y_test["unfair_label"]):
     result = predict_unfair_clause(loaded_model,sentence,threshold)
-    print(f"📝 계약 조항: {result['sentence']}")
-    print(f"🔍 판별 결과: {result['predicted_label']} (위반 확률: {result['unfair_probability']}%)")
-    print(f"✅ 정답: {'위반' if label == 1 else '합법'}")
-    print("-" * 50)
+    if result['predicted_label'] != f"{'위반' if label == 1 else '합법'}":
+        print(f"📝 계약 조항: {result['sentence']}")
+        print(f"🔍 판별 결과: {result['predicted_label']} (위반 확률: {result['unfair_probability']}%)")
+        print(f"✅ 정답: {'위반' if label == 1 else '합법'}")
+        print("-" * 50)
     y_pred.append(1 if result['unfair_probability'] >= threshold else 0)
     y_true.append(label)
 
