@@ -256,19 +256,17 @@ print(f'test: {len(x_test)}')
 y_pred = []
 y_true = []
 
-for sentence, true_label in zip(x_test, y_test["unfair_label"]):  # true_label은 숫자 인덱스
+for sentence, true_label in zip(x_test, y_test):  # true_label은 숫자 인덱스
     result = predict_article(loaded_model, sentence)
-    predicted_label_idx = result['predicted_article']  # 예측값 (숫자 인덱스)
+    predicted_label_idx = result['predicted_article'] # 예측값 (숫자 인덱스)
 
-    # 사람이 이해할 수 있는 값으로 변환
-    predicted_article = idx_to_article[predicted_label_idx]
     true_article = idx_to_article[true_label]
 
-    print(f"Predicted: {predicted_article}, True: {true_article}")
+    print(f"Predicted: {predicted_label_idx}, True: {true_article}")
 
     # 숫자 인덱스 저장
     y_pred.append(predicted_label_idx)
-    y_true.append(true_label)
+    y_true.append(true_article)
 
 # 성능 계산
 accuracy = accuracy_score(y_true, y_pred)

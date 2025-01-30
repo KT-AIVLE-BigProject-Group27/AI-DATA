@@ -4,7 +4,7 @@ import time
 import re
 
 sys.path.append(os.path.abspath("./AI/combine"))
-import modularization_ver1 as mo
+import modularization_ver2 as mo
 
 # 계약서 이름 설정
 contract_hwp_path ='C:/Users/User/Desktop/bigp/AI-DATA/Data_Analysis/Contract/example.hwp'
