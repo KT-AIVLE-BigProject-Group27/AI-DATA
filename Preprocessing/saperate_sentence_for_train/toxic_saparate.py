@@ -98,7 +98,7 @@ def preprocessing(data_path,save_path):
     return  df_deduplicated
 
 
-data_path = './Data_Analysis/Data_ver2/toxic_data/toxic_article_11.csv'
-save_path =  "./Data_Analysis/Data_ver2/toxic_data/toxic_article_11_first_preprocessing.csv"
+data_path = './Data_Analysis/Data_ver2/toxic_data/toxic_article_6-2.csv'
+save_path =  "./Data_Analysis/Data_ver2/toxic_data/toxic_article_6-2_first_preprocessing.csv"
 
 print(preprocessing(data_path,save_path))

@@ -13,7 +13,8 @@ inverse_symtostr = {
     '1': '①', '2': '②', '3': '③', '4': '④', '5': '⑤',
      '6': '⑥', '7': '⑦', '8': '⑧', '9': '⑨', '10': '⑩'}
 
-contract_hwp_path ='C:/Users/User/Desktop/AI-DATA/Data_Analysis/Contract/example.hwp'
+#contract_hwp_path ='C:/Users/User/Desktop/AI-DATA/Data_Analysis/Contract/example.hwp'
+contract_hwp_path ='C:/Users/User/Desktop/AI-DATA/Data_Analysis/Contract/24년 개정 직매입 표준거래계약서(면세점)_예시(화장품).hwp'
 txt = mo.hwp5txt_to_string(contract_hwp_path)
 articles = mo.contract_to_articles_ver2(txt)
 data_for_toxic = []
@@ -32,19 +33,19 @@ for article_number, article_detail in articles.items():
                 data_for_unfair.append([inverse_symtostr[sentence[3]] + ' ' + sentence[4], 0, 0, sentence[0]])
                 data_for_toxic.append([inverse_symtostr[sentence[3]] + ' ' + sentence[4], 0,sentence[0]])
         else:
-            data_for_unfair.append([f'제{sentence[0]}조 [{sentence[1]}] {sentence[2]} {sentence[5]}. {sentence[6]}', 0, 0, sentence[0]])
-            data_for_toxic.append([f'제{sentence[0]}조 [{sentence[1]}] {sentence[2]} {sentence[5]}. {sentence[6]}', 0,sentence[0]])
+            data_for_unfair.append([f'{sentence[2]} {sentence[5]}. {sentence[6]}', 0, 0, sentence[0]])
+            data_for_toxic.append([f'{sentence[2]} {sentence[5]}. {sentence[6]}', 0,sentence[0]])
             if sentence[6] != '':
-                data_for_unfair.append([f'제{sentence[0]}조 [{sentence[1]}] {sentence[2]}', 0, 0, sentence[0]])
-                data_for_toxic.append([f'제{sentence[0]}조 [{sentence[1]}] {sentence[2]}', 0, sentence[0]])
+                data_for_unfair.append([f'{sentence[2]}', 0, 0, sentence[0]])
+                data_for_toxic.append([f'{sentence[2]}', 0, sentence[0]])
 
 
 
-save_path_u =  "./Data_Analysis/Data_ver2/unfair_data/normal_preprocessing.csv"
-save_path_t =  "./Data_Analysis/Data_ver2/toxic_data/normal_preprocessing.csv"
+save_path_u =  "./Data_Analysis/Data_ver2/unfair_data/normal_2_preprocessing.csv"
+save_path_t =  "./Data_Analysis/Data_ver2/toxic_data/normal_2_preprocessing.csv"
 import pandas as pd
 df_u = pd.DataFrame(data_for_unfair, columns=["sentence", "unfair_label","law_article","article_number"])
-df_t = pd.DataFrame(data_for_toxic, columns=["sentence", "unfair_label","article_number"])
+df_t = pd.DataFrame(data_for_toxic, columns=["sentence", "toxic_label","article_number"])
 df_u_deduplicated = df_u.drop_duplicates()
 df_t_deduplicated = df_t.drop_duplicates()
 df_u_deduplicated.to_csv(save_path_u, index=False, encoding="utf-8-sig")
