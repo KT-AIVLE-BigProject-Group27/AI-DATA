@@ -423,15 +423,15 @@ def pipline(contract_path):
         article_title = match.group(2)
         article_content = match.group(3)
         sentences = article_to_sentences(article_number,article_title, article_content)
-        summary = article_summary_AI_ver2(prompt, article_detail)
-        summary_results.append(
-                        {
-                        'article_number':article_number, # 조 번호
-                        'article_title': article_title, # 조 제목
-                        'summary': summary # 조 요약
-                        }
-        )
-        print(f'{article_number}조 요약: {summary}')
+        # summary = article_summary_AI_ver2(prompt, article_detail)
+        # summary_results.append(
+        #                 {
+        #                 'article_number':article_number, # 조 번호
+        #                 'article_title': article_title, # 조 제목
+        #                 'summary': summary # 조 요약
+        #                 }
+        # )
+        # print(f'{article_number}조 요약: {summary}')
         for article_number, article_title, article_content, clause_number, clause_detail, subclause_number, subclause_detail in sentences:
             sentence = re.sub(r'\s+', ' ', f'[{article_title}] {article_content} {clause_number} {clause_detail} {subclause_number + "." if subclause_number else ""} {subclause_detail}').strip()
             unfair_result, unfair_percent = predict_unfair_clause(unfair_model, sentence, 0.5011)
@@ -481,7 +481,7 @@ def pipline(contract_path):
                                     'law_article_number': law_details['Article number'],  # 어긴 법 조   (불공정 1일때, 아니면 None)
                                     'law_clause_number_law': law_details['clause number'], # 어긴 법 항 (불공정 1일때, 아니면 None)
                                     'law_subclause_number_law': law_details['subclause number'],  # 어긴 법 호 (불공정 1일때, 아니면 None)
-                                    'explain': None #explain (불공정 1또는 독소 1일때, 아니면 None)
+                                    'explain': law #explain (불공정 1또는 독소 1일때, 아니면 None)
                                     }
                 )
     return indentification_results, summary_results

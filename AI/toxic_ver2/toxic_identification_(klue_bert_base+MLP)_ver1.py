@@ -21,7 +21,7 @@ article_to_title = {
 }
 
 
-name = 'toxic_identification_(klue_bert_base+MLP)_ver1_1차'
+name = 'toxic_identification_(klue_bert_base+MLP)_ver1_2차(add two contract)'
 # ✅ KLUE/BERT 토크나이저 및 모델 로드
 model_name = "klue/bert-base"
 tokenizer = BertTokenizer.from_pretrained(model_name)
@@ -49,6 +49,7 @@ for file in files_to_merge:
     print(f'--NaN-- \n {df.isna().sum()}')
     merged_df = pd.concat([merged_df, df], ignore_index=True)
 merged_df["article_number"] = merged_df["article_number"].astype(str)
+merged_df = merged_df.drop_duplicates()
 print(f'merged_df: {len(merged_df)}')
 
 ############################

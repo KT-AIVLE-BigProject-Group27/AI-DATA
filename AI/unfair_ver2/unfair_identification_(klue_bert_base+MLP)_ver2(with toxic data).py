@@ -2,14 +2,11 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from transformers import BertTokenizer, BertModel
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader, TensorDataset
-from torch.optim.lr_scheduler import LambdaLR
 import os
-import matplotlib.pyplot as plt
-
-
+from torch.utils.data import DataLoader, TensorDataset
 
 article_to_title = {
     '1': '[목적]', '2': '[기본원칙]', '3': '[공정거래 준수 및 동반성장 지원]', '4': '[상품의 납품]', '5': '[검수기준 및 품질검사]',
@@ -22,7 +19,7 @@ article_to_title = {
     '27': '[분쟁해결 및 재판관할]', '28': '[계약의 효력]'
 }
 
-name = 'unfair_identification_(klue_bert_base+MLP)_ver1_2차'
+name = 'unfair_identification_(klue_bert_base+MLP)_ver2_1차(with toxic data)'
 # ✅ KLUE/BERT 토크나이저 및 모델 로드
 model_name = "klue/bert-base"
 tokenizer = BertTokenizer.from_pretrained(model_name)
@@ -35,20 +32,32 @@ model_file = os.path.join(save_path, "klue_bert_mlp.pth")
 ###############################################################################################################################################
 # 데이터 로드 및 전처리
 ###############################################################################################################################################
-directory_path = './Data_Analysis/Data_ver2/unfair_data/'
+directory_path = './Data_Analysis/Data_ver2/toxic_data/'
 files_to_merge = [f for f in os.listdir(directory_path) if 'preprocessing' in f and f.endswith('.csv')]
-merged_df = pd.DataFrame()
+merged_df_toxic = pd.DataFrame()
 for file in files_to_merge:
     file_path = os.path.join(directory_path, file)
     df = pd.read_csv(file_path)
-    print("*"*50)
-    print(f'{file}')
-    print(f'len-{len(df)}')
-    print(f'--NaN-- \n {df.isna().sum()}')
-    merged_df = pd.concat([merged_df, df], ignore_index=True)
-merged_df["article_number"] = merged_df["article_number"].astype(str)
-print(f'merged_df: {len(merged_df)}')
+    df = df[['sentence','toxic_label','article_number']]
+    merged_df_toxic = pd.concat([merged_df_toxic, df], ignore_index=True)
+merged_df_toxic["article_number"] = merged_df_toxic["article_number"].astype(str)
+merged_df_toxic["unfair_label"] = 0
+###############################################################################################################################################
+# 위반 데이터 로드 및 전처리
+###############################################################################################################################################
+directory_path = './Data_Analysis/Data_ver2/unfair_data/'
+files_to_merge = [f for f in os.listdir(directory_path) if 'preprocessing' in f and f.endswith('.csv')]
+merged_df_unfair = pd.DataFrame()
+for file in files_to_merge:
+    file_path = os.path.join(directory_path, file)
+    df = pd.read_csv(file_path)
+    df = df[['sentence','unfair_label','article_number']]
+    merged_df_unfair = pd.concat([merged_df_unfair, df], ignore_index=True)
+merged_df_unfair["article_number"] = merged_df_unfair["article_number"].astype(str)
 
+merged_df = pd.concat([merged_df_toxic[['sentence', 'unfair_label','article_number']], merged_df_unfair], ignore_index=True)
+merged_df = merged_df.drop_duplicates()
+print(len(merged_df))
 ############################
 # stratify 오류 해결
 ############################
@@ -135,6 +144,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = BertMLPClassifier().to(device)
 criterion = nn.BCELoss()  # Binary Cross Entropy Loss 사용
 optimizer = optim.Adam(model.parameters(), lr=0.00002)
+
+
+from torch.optim.lr_scheduler import LambdaLR
+import os
+import matplotlib.pyplot as plt
 
 # Warm-up Scheduler 정의
 def warmup_scheduler(optimizer, num_warmup_steps, num_training_steps):
