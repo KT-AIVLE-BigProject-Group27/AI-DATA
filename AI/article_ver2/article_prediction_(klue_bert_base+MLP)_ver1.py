@@ -8,8 +8,20 @@ from sklearn.model_selection import train_test_split
 import os
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim.lr_scheduler import LambdaLR
+import matplotlib.pyplot as plt
 
-name = 'article_prediction_(klue_bert_base+MLP)_ver1_2차'
+article_to_title = {
+    '1': '[목적]', '2': '[기본원칙]', '3': '[공정거래 준수 및 동반성장 지원]', '4': '[상품의 납품]', '5': '[검수기준 및 품질검사]',
+    '6': '[납품대금 지급 및 감액금지]', '6-2': '[공급원가 변동에 따른 납품 가격의 조정]', '7': '[상품의 반품]', '8': '[판매장려금]',
+    '9': '[판촉사원 파견 등]', '10': '[서비스 품질유지]', '11': '[판촉행사 참여 등]', '12': '[매장 위치 및 면적 등]',
+    '12-2': '[매장이동 기준 등의 사전 통지]', '13': '[기타 비용의 사전 통지]', '14': '[경영정보 제공 요구 금지]',
+    '15': '[보복조치의 금지]', '16': '[각종 불이익 제공 금지 등]', '17': '[손해배상]', '18': '[지식재산권 등]',
+    '19': '[상표관련특약]', '20': '[제조물책임]', '21': '[권리ㆍ의무의 양도금지]', '22': '[통지의무]', '23': '[비밀유지]',
+    '24': '[계약해지]', '25': '[상계]', '26': '[계약의 유효기간 및 갱신]', '26-2': '[계약의 갱신 기준 등의 사전 통지]',
+    '27': '[분쟁해결 및 재판관할]', '28': '[계약의 효력]'
+}
+
+name = 'article_prediction_(klue_bert_base+MLP)_ver1_4차'
 # ✅ KLUE/BERT 토크나이저 및 모델 로드
 model_name = "klue/bert-base"
 tokenizer = BertTokenizer.from_pretrained(model_name)
@@ -33,8 +45,12 @@ for file in files_to_merge:
     print(f'len-{len(df)}')
     print(f'--NaN-- \n {df.isna().sum()}')
     merged_df = pd.concat([merged_df, df], ignore_index=True)
+merged_df["article_number"] = merged_df["article_number"].astype(str)
 print(f'merged_df: {len(merged_df)}')
 
+merged_df["sentence"] = merged_df.apply(
+    lambda row: f"{article_to_title.get(row['article_number'])} {row['sentence']}", axis=1
+)
 
 df_unfair = merged_df[merged_df["unfair_label"] == 1].reset_index(drop=True)
 
@@ -110,9 +126,8 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.00002)
 
 
-from torch.optim.lr_scheduler import LambdaLR
-import os
-import matplotlib.pyplot as plt
+
+
 
 # Warm-up Scheduler 정의
 def warmup_scheduler(optimizer, num_warmup_steps, num_training_steps):
@@ -136,18 +151,21 @@ warmup_sched = warmup_scheduler(optimizer, num_warmup_steps, num_training_steps)
 reduce_sched = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, factor=0.5, verbose=True)
 # Cosine Annealing
 # 손실 그래프 저장 함수
-def plot_loss_curve(train_losses, val_losses, save_path):
+def plot_loss_curve(train_losses, val_losses, lr_list, save_path):
     fig, ax1 = plt.subplots(figsize=(10, 6))
     ax1.plot(train_losses, label="Train Loss", marker="o", color="blue")
+    ax1.plot(val_losses, label="Validation Loss", marker="o", color="red")
     ax1.set_xlabel("Epochs")
-    ax1.set_ylabel("Train Loss", color="blue")
-    ax1.tick_params(axis="y", labelcolor="blue")
+    ax1.set_ylabel("Loss", color="black")
+    ax1.tick_params(axis="y", labelcolor="black")
     ax1.grid(True)
     ax2 = ax1.twinx()
-    ax2.plot(val_losses, label="Validation Loss", marker="o", color="red")
-    ax2.set_ylabel("Validation Loss", color="red")
-    ax2.tick_params(axis="y", labelcolor="red")
-    plt.title("Training and Validation Loss")
+    ax2.plot(lr_list, label="Learning Rate", marker="x", linestyle="dashed", color="green")
+    ax2.set_ylabel("Learning Rate", color="green")
+    ax2.tick_params(axis="y", labelcolor="green")
+    ax1.legend(loc="upper left")
+    ax2.legend(loc="upper right")
+    plt.title("Training Loss, Validation Loss & Learning Rate")
     fig.tight_layout()
     plt.savefig(save_path)
     plt.close()
@@ -160,6 +178,7 @@ def train_model(model, train_loader, val_loader, epochs=10, patience=3):
     val_loss_list = []
     best_model_state = None
     current_step = 0
+    lr_list = []
 
     for epoch in range(epochs):
         model.train()
@@ -194,6 +213,11 @@ def train_model(model, train_loader, val_loader, epochs=10, patience=3):
                 val_loss += criterion(val_outputs, y_batch).item()
         val_loss /= len(val_loader)
 
+        # ✅ 현재 학습률 저장
+        current_lr = optimizer.param_groups[0]['lr']
+        lr_list.append(current_lr)
+
+
         # Validation Loss 기록
         train_loss_list.append(train_loss)
         val_loss_list.append(val_loss)
@@ -210,6 +234,7 @@ def train_model(model, train_loader, val_loader, epochs=10, patience=3):
             best_loss = val_loss
             patience_counter = 0
             best_model_state = model.state_dict()
+            print("✅ Best model weights loaded into the model")
         else:
             patience_counter += 1
 
@@ -217,17 +242,25 @@ def train_model(model, train_loader, val_loader, epochs=10, patience=3):
             print(f"Early stopping at epoch {epoch + 1}")
             break
 
-        # Best 모델 로드
-        if best_model_state is not None:
-            model.load_state_dict(best_model_state)
-            print("✅ Best model weights loaded into the model")
+    if best_model_state is not None:
+        model.load_state_dict(best_model_state)  # ✅ 최적 모델 복원
+        print(f"🔄 Restored best model weights with val_loss {best_loss:.8f}")
+    else:
+        print("⚠️ Warning: No best model found, training ended without improvement.")
 
+    loss_data = pd.DataFrame({
+        "Epoch": list(range(1, len(train_loss_list) + 1)),
+        "Train Loss": train_loss_list,
+        "Validation Loss": val_loss_list,
+        "Learning Rate": lr_list
+    })
     # Loss 그래프 저장
+    loss_csv_path = os.path.join(save_path, "loss_and_lr.csv")
+    loss_data.to_csv(loss_csv_path, index=False)
     loss_plot_path = os.path.join(save_path, "loss_curve.png")
-    plot_loss_curve(train_loss_list, val_loss_list, loss_plot_path)
-
+    plot_loss_curve(train_loss_list, val_loss_list, lr_list, loss_plot_path)
 # 모델 학습 실행
-train_model(model, train_loader, val_loader, epochs=1000, patience=10)
+train_model(model, train_loader, val_loader, epochs=200, patience=10)
 torch.save(model.state_dict(), model_file)
 
 ###############################################################################################################################################
