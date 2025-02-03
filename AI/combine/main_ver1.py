@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath("./AI/combine"))
 import modularization_ver2 as mo
 
 # 계약서 이름 설정
-contract_hwp_path ='C:/Users/User/Desktop/AI-DATA/Data_Analysis/Contract/example.hwp'
+contract_hwp_path ='C:/Users/User/Desktop/AI-DATA/Data_Analysis/Contract/24년 개정 직매입 표준거래계약서(면세점)-향수(시연용).hwp'
 # contract_pdf_path ='C:/Users/User/Desktop/AI-DATA/Data_Analysis/Contract/example.pdf'
 
 

@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 import os
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim.lr_scheduler import LambdaLR
+import matplotlib.pyplot as plt
 
 article_to_title = {
     '1': '[목적]', '2': '[기본원칙]', '3': '[공정거래 준수 및 동반성장 지원]', '4': '[상품의 납품]', '5': '[검수기준 및 품질검사]',
@@ -20,7 +21,7 @@ article_to_title = {
     '27': '[분쟁해결 및 재판관할]', '28': '[계약의 효력]'
 }
 
-name = 'article_prediction_(klue_bert_base+MLP)_ver1_3차'
+name = 'article_prediction_(klue_bert_base+MLP)_ver1_4차'
 # ✅ KLUE/BERT 토크나이저 및 모델 로드
 model_name = "klue/bert-base"
 tokenizer = BertTokenizer.from_pretrained(model_name)
@@ -44,6 +45,7 @@ for file in files_to_merge:
     print(f'len-{len(df)}')
     print(f'--NaN-- \n {df.isna().sum()}')
     merged_df = pd.concat([merged_df, df], ignore_index=True)
+merged_df["article_number"] = merged_df["article_number"].astype(str)
 print(f'merged_df: {len(merged_df)}')
 
 merged_df["sentence"] = merged_df.apply(
@@ -124,9 +126,8 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.00002)
 
 
-from torch.optim.lr_scheduler import LambdaLR
-import os
-import matplotlib.pyplot as plt
+
+
 
 # Warm-up Scheduler 정의
 def warmup_scheduler(optimizer, num_warmup_steps, num_training_steps):
@@ -259,7 +260,7 @@ def train_model(model, train_loader, val_loader, epochs=10, patience=3):
     loss_plot_path = os.path.join(save_path, "loss_curve.png")
     plot_loss_curve(train_loss_list, val_loss_list, lr_list, loss_plot_path)
 # 모델 학습 실행
-train_model(model, train_loader, val_loader, epochs=1000, patience=10)
+train_model(model, train_loader, val_loader, epochs=200, patience=10)
 torch.save(model.state_dict(), model_file)
 
 ###############################################################################################################################################
