@@ -66,6 +66,4 @@ def evaluate_model(model, data_loader):
 
 # ✅ 학습 완료 후 평가 실행
 evaluate_model(loaded_model, val_loader)
-
-
 """

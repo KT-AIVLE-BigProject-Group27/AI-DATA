@@ -2,14 +2,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from transformers import BertTokenizer, BertModel
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
+import os
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim.lr_scheduler import LambdaLR
-import os
 import matplotlib.pyplot as plt
-
-
 
 article_to_title = {
     '1': '[목적]', '2': '[기본원칙]', '3': '[공정거래 준수 및 동반성장 지원]', '4': '[상품의 납품]', '5': '[검수기준 및 품질검사]',
@@ -22,7 +21,7 @@ article_to_title = {
     '27': '[분쟁해결 및 재판관할]', '28': '[계약의 효력]'
 }
 
-name = 'unfair_identification_(klue_bert_base+MLP)_ver1_2차'
+name = 'article_prediction_(klue_bert_base+MLP)_ver1_4차'
 # ✅ KLUE/BERT 토크나이저 및 모델 로드
 model_name = "klue/bert-base"
 tokenizer = BertTokenizer.from_pretrained(model_name)
@@ -49,92 +48,86 @@ for file in files_to_merge:
 merged_df["article_number"] = merged_df["article_number"].astype(str)
 print(f'merged_df: {len(merged_df)}')
 
-############################
-# stratify 오류 해결
-############################
-article_counts = merged_df["article_number"].value_counts()
-for article, count in article_counts.items():
-    if count < 4:
-        sample_to_duplicate = merged_df[merged_df["article_number"] == article]
-        num_copies = 4 - count
-        merged_df = pd.concat([merged_df] + [sample_to_duplicate] * num_copies, ignore_index=True)
-############################
-
 merged_df["sentence"] = merged_df.apply(
     lambda row: f"{article_to_title.get(row['article_number'])} {row['sentence']}", axis=1
 )
+
+df_unfair = merged_df[merged_df["unfair_label"] == 1].reset_index(drop=True)
+
+article_to_idx = {article: idx for idx, article in enumerate(df_unfair["article_number"].unique())}
+idx_to_article = {idx: article for article, idx in article_to_idx.items()}
+df_unfair["article_number"] = df_unfair["article_number"].map(article_to_idx)
 x_temp, x_test, y_temp, y_test = train_test_split(
-    merged_df["sentence"].tolist(),
-    merged_df[["unfair_label", "article_number"]],  # DataFrame으로 두 열 선택
+    df_unfair["sentence"].tolist(),
+    df_unfair["article_number"],
     test_size=0.1,
     random_state=42,
-    stratify=merged_df[["article_number", "unfair_label"]],  # 두 개의 컬럼을 기준으로 stratify
+    stratify=df_unfair["article_number"],
     shuffle=True
 )
-# y_temp에서 'unfair_label'과 'article_number'를 분리
-y_temp_labels = y_temp["unfair_label"]
-y_temp_articles = y_temp["article_number"]
 
-# 두 번째 Train/Val 데이터 분할 (8:2 비율)
-# stratify에 article_number와 unfair_label 결합하여 두 기준을 동시에 고려하도록 함
 X_train, X_val, y_train, y_val = train_test_split(
     x_temp,
-    y_temp_labels,  # unfair_label만 사용
+    y_temp,
     test_size=0.2,
     random_state=42,
-    stratify=y_temp[["article_number", "unfair_label"]],  # 두 기준을 동시에 stratify
+    stratify=y_temp,
     shuffle=True
 )
-
 print(f'Length of X_train (train data): {len(X_train)}')
 print(f'Length of y_train (train labels): {len(y_train)}')
 print(f'Length of X_val (validation data): {len(X_val)}')
 print(f'Length of y_val (validation labels): {len(y_val)}')
 print(f'Length of x_test (test data): {len(x_test)}')
 print(f'Length of y_test (test labels): {len(y_test)}')
-
-# ✅ 토큰화 및 텐서 변환 함수
 def tokenize_data(sentences, tokenizer, max_length=256):
     encoding = tokenizer(
         sentences, padding=True, truncation=True, max_length=max_length, return_tensors="pt"
     )
     return encoding["input_ids"], encoding["attention_mask"]
-
 X_train_ids, X_train_mask = tokenize_data(X_train, tokenizer)
 X_val_ids, X_val_mask = tokenize_data(X_val, tokenizer)
-y_train_tensor = torch.tensor(y_train.values, dtype=torch.float32).unsqueeze(1)  # [batch, 1] 형태
-y_val_tensor = torch.tensor(y_val.values, dtype=torch.float32).unsqueeze(1)
+y_train_tensor = torch.tensor(y_train.values, dtype=torch.long)
+y_val_tensor = torch.tensor(y_val.values, dtype=torch.long)
 batch_size = 16
 train_dataset = TensorDataset(X_train_ids, X_train_mask, y_train_tensor)
 val_dataset = TensorDataset(X_val_ids, X_val_mask, y_val_tensor)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+num_articles = len(article_to_idx)
 ###############################################################################################################################################
 # 모델 설계
 ###############################################################################################################################################
 class BertMLPClassifier(nn.Module):
-    def __init__(self, bert_model_name="klue/bert-base", hidden_size=256):
+    def __init__(self, bert_model_name="klue/bert-base", hidden_size=256, num_classes=num_articles):
         super(BertMLPClassifier, self).__init__()
         self.bert = BertModel.from_pretrained(bert_model_name)
         self.fc1 = nn.Linear(self.bert.config.hidden_size, hidden_size)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(0.3)
-        self.fc2 = nn.Linear(hidden_size, 1)  # 불공정(1) 확률을 출력
-        self.sigmoid = nn.Sigmoid()  # 확률값으로 변환
+        self.fc2 = nn.Linear(hidden_size, num_classes)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, input_ids, attention_mask):
         outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
-        cls_output = outputs.last_hidden_state[:, 0, :]  # [CLS] 벡터 사용
+        cls_output = outputs.last_hidden_state[:, 0, :]
         x = self.fc1(cls_output)
         x = self.relu(x)
         x = self.dropout(x)
         x = self.fc2(x)
-        return self.sigmoid(x)  # 0~1 확률값 반환
+        return self.sigmoid(x)
+
+
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = BertMLPClassifier().to(device)
-criterion = nn.BCELoss()  # Binary Cross Entropy Loss 사용
+criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.00002)
+
+
+
+
 
 # Warm-up Scheduler 정의
 def warmup_scheduler(optimizer, num_warmup_steps, num_training_steps):
@@ -224,6 +217,7 @@ def train_model(model, train_loader, val_loader, epochs=10, patience=3):
         current_lr = optimizer.param_groups[0]['lr']
         lr_list.append(current_lr)
 
+
         # Validation Loss 기록
         train_loss_list.append(train_loss)
         val_loss_list.append(val_loss)
@@ -243,6 +237,7 @@ def train_model(model, train_loader, val_loader, epochs=10, patience=3):
             print("✅ Best model weights loaded into the model")
         else:
             patience_counter += 1
+
         if patience_counter >= patience:
             print(f"Early stopping at epoch {epoch + 1}")
             break
@@ -264,72 +259,60 @@ def train_model(model, train_loader, val_loader, epochs=10, patience=3):
     loss_data.to_csv(loss_csv_path, index=False)
     loss_plot_path = os.path.join(save_path, "loss_curve.png")
     plot_loss_curve(train_loss_list, val_loss_list, lr_list, loss_plot_path)
-
-
-# ✅ 모델 학습 실행 (손실 그래프 추가됨)
-train_model(model, train_loader, val_loader, epochs=1000, patience=10)
+# 모델 학습 실행
+train_model(model, train_loader, val_loader, epochs=200, patience=10)
 torch.save(model.state_dict(), model_file)
 
-#######################################################################################################################
+###############################################################################################################################################
 # 모델 Test
-#######################################################################################################################
-
-
-# ✅ 불공정 조항 예측 함수 (수정 없음)
-def predict_unfair_clause(c_model, sentence, threshold=0.5):
-    """계약서 문장이 불공정한지 여부를 확률로 예측 (threshold 사용)"""
+###############################################################################################################################################
+def predict_article(c_model, sentence):
     c_model.eval()
     inputs = tokenizer(sentence, padding=True, truncation=True, max_length=256, return_tensors="pt").to(device)
     with torch.no_grad():
         output = c_model(inputs["input_ids"], inputs["attention_mask"])
-        unfair_prob = output.item()
+        predicted_idx = torch.argmax(output).item()
+        predicted_article = idx_to_article[predicted_idx]
     return {
         "sentence": sentence,
-        "unfair_probability": round(unfair_prob * 100, 2),  # 1(불공정) 확률
-        "predicted_label": "위반" if unfair_prob >= threshold else "합법"
+        "predicted_article": predicted_article
     }
-
-# ✅ 모델 저장 (state_dict만 저장)
-def load_trained_model(model_file):
-    # ✅ 모델 객체를 새로 생성한 후 state_dict만 로드해야 함
+def load_article_model(model_file):
     model = BertMLPClassifier().to(device)
     model.load_state_dict(torch.load(model_file, map_location=device))
     model.eval()
     print(f"✅ 저장된 모델 로드 완료: {model_file}")
     return model
-loaded_model = load_trained_model(model_file)
-"""
-import os, sys
-sys.path.append(os.path.abspath("./AI"))
-import threshold_settings as ts
-threshold= ts.find_threshold(loaded_model, train_loader=train_loader, val_loader=val_loader, use_train=False, device=device)
-최적 임계값: 0.5003
-"""
+loaded_model = load_article_model(model_file)
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+print(f'test: {len(x_test)}')
 y_pred = []
 y_true = []
-threshold = 0.5011
-print(f'test: {len(x_test)}')
-for sentence, label in zip(x_test, y_test["unfair_label"]):
-    result = predict_unfair_clause(loaded_model,sentence,threshold)
-    if result['predicted_label'] != f"{'위반' if label == 1 else '합법'}":
-        print(f"📝 계약 조항: {result['sentence']}")
-        print(f"🔍 판별 결과: {result['predicted_label']} (위반 확률: {result['unfair_probability']}%)")
-        print(f"✅ 정답: {'위반' if label == 1 else '합법'}")
-        print("-" * 50)
-    y_pred.append(1 if result['unfair_probability'] >= threshold else 0)
-    y_true.append(label)
 
-# ✅ 성능 지표 계산
+for sentence, true_label in zip(x_test, y_test):  # true_label은 숫자 인덱스
+    result = predict_article(loaded_model, sentence)
+    predicted_label_idx = result['predicted_article'] # 예측값 (숫자 인덱스)
+
+    true_article = idx_to_article[true_label]
+
+    print(f"Predicted: {predicted_label_idx}, True: {true_article}")
+
+    # 숫자 인덱스 저장
+    y_pred.append(predicted_label_idx)
+    y_true.append(true_article)
+
+# 성능 계산
 accuracy = accuracy_score(y_true, y_pred)
-precision = precision_score(y_true, y_pred)
-recall = recall_score(y_true, y_pred)
-f1 = f1_score(y_true, y_pred)
-roc_auc = roc_auc_score(y_true, y_pred)
+precision = precision_score(y_true, y_pred, average="macro", zero_division=1)
+recall = recall_score(y_true, y_pred, average="macro", zero_division=1)
+f1 = f1_score(y_true, y_pred, average="macro", zero_division=1)
+try:
+    roc_auc = roc_auc_score(y_true, y_pred, multi_class="ovr")
+except ValueError:
+    roc_auc = float('nan')
 
-# ✅ 성능 지표 출력
-print("📊 테스트 데이터 성능 평가 결과 📊")
-print(f"📌 최적 임계값: {threshold:.4f}")
+# 성능 출력
+print("\n📊 테스트 데이터 성능 평가 결과 📊")
 print(f"✅ Accuracy: {accuracy:.4f}")
 print(f"✅ Precision: {precision:.4f}")
 print(f"✅ Recall: {recall:.4f}")

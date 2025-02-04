@@ -43,7 +43,7 @@ for article_number, article_detail in articles.items():
 
 
 # 모델 저장 경로 설정
-save_directory = "D:/Model/article_summary_ver2/"
+save_directory = "./Model/article_summary_ver2/"
 
 # 모델 및 토크나이저 저장
 model.save_pretrained(save_directory)
