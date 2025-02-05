@@ -474,7 +474,7 @@ def pipline(contract_path):
                 law_text.append(f" {law_details['subclause number']}: {law_details['subclause detail']}")
             law = "".join(law_text) if law_text else None
 
-            # explain = explanation_AI(sentence, unfair_result, toxic_result, law)
+            explain = explanation_AI(sentence, unfair_result, toxic_result, law)
 
             if unfair_result or toxic_result:
                 indentification_results.append(
@@ -490,7 +490,7 @@ def pipline(contract_path):
                                     'law_article_number': law_details['Article number'],  # 어긴 법 조   (불공정 1일때, 아니면 None)
                                     'law_clause_number_law': law_details['clause number'], # 어긴 법 항 (불공정 1일때, 아니면 None)
                                     'law_subclause_number_law': law_details['subclause number'],  # 어긴 법 호 (불공정 1일때, 아니면 None)
-                                    'explain': law #explain (불공정 1또는 독소 1일때, 아니면 None)
+                                    'explain': explain #explain (불공정 1또는 독소 1일때, 아니면 None)
                                     }
                 )
     return indentification_results, summary_results

@@ -1,14 +1,33 @@
-import os, sys
+import os, sys, pandas as pd
 sys.path.append(os.path.abspath("./AI/combine"))
 import modularization_ver3 as mo
 contract_hwp_path ='C:/Users/User/Desktop/AI-DATA/Data_Analysis/Contract/'
 mo.initialize_models()
 hwp_files = [ file for file in os.listdir(contract_hwp_path) if file.endswith(".hwp")]
 results = {}
+all_results = []
 for hwp_file in hwp_files:
     results[hwp_file] = []
     hwp_path = os.path.join(contract_hwp_path, hwp_file)
     indentification_results, summary_results = mo.pipline(hwp_path)
+    for result in indentification_results:
+        all_results.append({
+            '파일명': hwp_file,
+            '조항 번호': result['contract_article_number'],
+            '항 번호': result['contract_clause_number'],
+            '호 번호': result['contract_subclause_number'],
+            '문장': result['Sentence'],
+            '불공정 여부': result['Unfair'],
+            '불공정 확률': result['Unfair_percent'],
+            '독소 여부': result['Toxic'],
+            '독소 확률': result['Toxic_percent'],
+            '어긴 법 조항 번호': result['law_article_number'],
+            '어긴 법 항 번호': result['law_clause_number_law'],
+            '어긴 법 호 번호': result['law_subclause_number_law'],
+            '설명': result['explain']
+        })
+
+    print(f'----{hwp_file}----')
     for indentification_result in indentification_results:
         if indentification_result['Unfair'] == 1:
             print(f"문장: {indentification_result['Sentence']}")
@@ -17,12 +36,19 @@ for hwp_file in hwp_files:
             print(f"어긴 법 호 번호: {indentification_result['law_subclause_number_law']}")
             print(f"설명: {indentification_result['explain']}")
         results[hwp_file].append([f"{indentification_result['contract_article_number']}조 {indentification_result['contract_clause_number']}항 {indentification_result['contract_subclause_number']}조 위반:{indentification_result['Unfair']} 독소:{indentification_result['Toxic']}"])
+df = pd.DataFrame(all_results)
 
-for contract_name, result in results.items():
-    print('*'*20)
-    print(f'계약서 종류: {contract_name}')
-    for r in result:
-        print(r)
+# CSV 파일로 저장
+csv_filename = "contract_analysis_results.csv"
+df.to_csv(csv_filename, index=False, encoding="utf-8-sig")
+
+print(f"✅ CSV 파일 저장 완료: {csv_filename}")
+# for contract_name, result in results.items():
+#     print('*'*20)
+#     print(f'계약서 종류: {contract_name}')
+#     for r in result:
+#         print(r)
+#
 #####################################TEST#################################
 # for result in indentification_results:
 #     print(f"계약 조항 번호: {result['contract_article_number']}")
