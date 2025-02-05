@@ -107,12 +107,12 @@ def get_KoELECTRA_model(hidden_size=256):
 ##############################################
 def get_KLUE_Roberta_model(hidden_size=256):
     model_name = "klue/roberta-base"
-    tokenizer = RobertaTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     class KLUERobertaMLPClassifier(nn.Module):
         def __init__(self):
             super(KLUERobertaMLPClassifier, self).__init__()
-            self.roberta = RobertaModel.from_pretrained(model_name)
+            self.roberta = AutoModel.from_pretrained(model_name)
             self.fc1 = nn.Linear(self.roberta.config.hidden_size, hidden_size)
             self.relu = nn.ReLU()
             self.dropout = nn.Dropout(0.3)
@@ -165,8 +165,8 @@ def get_KoSBERT_model(hidden_size=256):
 ##############################################
 def get_XLMRoberta_model(hidden_size=256):
     model_name = "xlm-roberta-base"
-    tokenizer = XLMRobertaTokenizer.from_pretrained(model_name)
-
+    # tokenizer = XLMRobertaTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     class XLMRobertaMLPClassifier(nn.Module):
         def __init__(self):
             super(XLMRobertaMLPClassifier, self).__init__()

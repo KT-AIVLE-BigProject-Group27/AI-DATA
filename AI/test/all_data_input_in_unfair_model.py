@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from sklearn.metrics import accuracy_score
 from transformers import BertTokenizer, BertModel
 import numpy as np
 import pandas as pd
@@ -8,6 +9,7 @@ from sklearn.model_selection import train_test_split
 import os
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim.lr_scheduler import LambdaLR
+from kobert_transformers import get_tokenizer
 
 article_to_title = {
     '1': '[목적]', '2': '[기본원칙]', '3': '[공정거래 준수 및 동반성장 지원]', '4': '[상품의 납품]', '5': '[검수기준 및 품질검사]',
@@ -20,9 +22,13 @@ article_to_title = {
     '27': '[분쟁해결 및 재판관할]', '28': '[계약의 효력]'
 }
 # ✅ KLUE/BERT 토크나이저 및 모델 로드
-model_name = "klue/bert-base"
-tokenizer = BertTokenizer.from_pretrained(model_name)
-###############################################################################################################################################
+
+model_name = "monologg/kobert"
+tokenizer = get_tokenizer()
+
+# model_name = "klue/bert-base"
+# tokenizer = BertTokenizer.from_pretrained(model_name)
+# ###############################################################################################################################################
 # 독소 데이터 로드 및 전처리
 ###############################################################################################################################################
 directory_path = './Data_Analysis/Data_ver2/toxic_data/'
@@ -64,17 +70,18 @@ print(len(merged_df))
 # 위반 모델 로드 및 test
 ###############################################################################################################################################
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model_file = "E:/Model/ver2/unfair_identification_(klue_bert_base+MLP)_ver2_1차(with toxic data)/klue_bert_mlp.pth"
+model_file = "E:/Model/ver2/unfair_identification_ver3_비교/KoBERT/KoBERT_mlp.pth"
 
-class BertMLPClassifier(nn.Module):
-    def __init__(self, bert_model_name="klue/bert-base", hidden_size=256):
-        super(BertMLPClassifier, self).__init__()
-        self.bert = BertModel.from_pretrained(bert_model_name)
-        self.fc1 = nn.Linear(self.bert.config.hidden_size, hidden_size)
+class KoBERTMLPClassifier(nn.Module):
+    def __init__(self):
+        super(KoBERTMLPClassifier, self).__init__()
+        self.bert = BertModel.from_pretrained(model_name)
+        self.fc1 = nn.Linear(self.bert.config.hidden_size, 256)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(0.3)
-        self.fc2 = nn.Linear(hidden_size, 1)  # 불공정(1) 확률을 출력
+        self.fc2 = nn.Linear(256, 1)
         self.sigmoid = nn.Sigmoid()
+
     def forward(self, input_ids, attention_mask):
         outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
         cls_output = outputs.last_hidden_state[:, 0, :]
@@ -83,6 +90,7 @@ class BertMLPClassifier(nn.Module):
         x = self.dropout(x)
         x = self.fc2(x)
         return self.sigmoid(x)
+
 
 def predict_unfair_clause(c_model, sentence):
     c_model.eval()
@@ -95,20 +103,12 @@ def predict_unfair_clause(c_model, sentence):
     }
 
 def load_trained_model(model_file):
-    model = BertMLPClassifier().to(device)
+    model = KoBERTMLPClassifier().to(device)
     model.load_state_dict(torch.load(model_file, map_location=device))
     model.eval()
     print(f"✅ 저장된 모델 로드 완료: {model_file}")
     return model
 loaded_model = load_trained_model(model_file)
-"""
-import os, sys
-sys.path.append(os.path.abspath("./AI"))
-import threshold_settings as ts
-threshold= ts.find_threshold(loaded_model, train_loader=train_loader, val_loader=val_loader, use_train=False, device=device)
-최적 임계값: 0.5003
-"""
-
 
 results = []
 for index, row in merged_df.iterrows():
@@ -193,3 +193,31 @@ plt.close()
 
 print(df_toxic[['sentence','unfair_probability']].sort_values('unfair_probability',ascending=False))
 print(df_unfair[['sentence','unfair_probability']].sort_values('unfair_probability'))
+
+
+#######################################################################################################################################
+import sys
+sys.path.append(os.path.abspath("./AI"))
+from threshold_settings import find_all_thresholds
+from sklearn.metrics import accuracy_score
+thresholds = find_all_thresholds(loaded_model,tokenizer ,'unfair', use_train=False, device="cuda")
+print("Computed thresholds:", thresholds)
+
+# 여러 임계값을 적용하여 정확도 비교
+accuracy_results = {}
+
+for name, threshold in thresholds.items():
+    # 각 임계값을 기준으로 위반(불공정) 예측
+    df[f'predicted_unfair_{name}'] = df["unfair_probability"].apply(lambda x: 1 if x >= threshold else 0)
+
+    # 정확도 계산
+    accuracy = accuracy_score(df["unfair_label"], df[f'predicted_unfair_{name}'])
+    accuracy_results[name] = accuracy
+
+# 최적의 임계값 선택 (정확도가 가장 높은 값)
+best_threshold = max(accuracy_results, key=accuracy_results.get)
+best_accuracy = accuracy_results[best_threshold]
+
+# 결과 출력
+print(f"✅ 최적의 임계값: {best_threshold} ({thresholds[best_threshold]:.4f})")
+print(f"✅ 최적 임계값 적용 시 정확도: {best_accuracy:.4f}")

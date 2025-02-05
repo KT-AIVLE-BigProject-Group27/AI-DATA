@@ -285,19 +285,23 @@ results_df = pd.DataFrame(results)
 print("\n전체 모델 성능 비교:")
 print(results_df)
 
-# 바 차트로 비교: 각 성능 지표별로 subplot 생성
-metrics = ["Accuracy", "Precision", "Recall", "F1", "ROC-AUC"]
-num_metrics = len(metrics)
 
-fig, axs = plt.subplots(1, num_metrics, figsize=(4 * num_metrics, 5))
-for i, metric in enumerate(metrics):
-    axs[i].bar(results_df["Model"], results_df[metric], color='skyblue')
-    axs[i].set_title(metric)
-    axs[i].set_ylim([0, 1])
-    for j, value in enumerate(results_df[metric]):
-        axs[i].text(j, value + 0.02, f"{value:.2f}", ha="center", va="bottom", fontsize=10)
-plt.suptitle("모델별 성능 비교", fontsize=16)
-comparison_plot_file = os.path.join(base_save_path, "model_comparison.png")
-plt.tight_layout()
-plt.savefig(comparison_plot_file)
-plt.show()
+# CSV로 저장
+csv_file_path = os.path.join(base_save_path, "model_results.csv")
+results_df.to_csv(csv_file_path, index=False)
+
+# 성능 지표별 차트 저장
+metrics = ["Accuracy", "Precision", "Recall", "F1", "ROC-AUC"]
+
+for metric in metrics:
+    plt.figure(figsize=(5, 5))
+    plt.bar(results_df["Model"], results_df[metric], color='skyblue')
+    plt.title(metric)
+    plt.ylim([0.90, 1])  # y축 범위 설정
+    for i, value in enumerate(results_df[metric]):
+        plt.text(i, value + 0.002, f"{value:.4f}", ha="center", va="bottom", fontsize=10)
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plot_file = os.path.join(base_save_path, f"{metric.lower()}_comparison.png")
+    plt.savefig(plot_file)
+    plt.close()
