@@ -127,12 +127,12 @@ def get_KLUE_Roberta_model(num_classes=10, hidden_size=256):
     KLUE-RoBERTa 기반 조항 예측 모델과 토크나이저를 반환합니다.
     """
     model_name = "klue/roberta-base"
-    tokenizer = RobertaTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     class KLUERobertaMLPClassifier(nn.Module):
         def __init__(self):
             super(KLUERobertaMLPClassifier, self).__init__()
-            self.roberta = RobertaModel.from_pretrained(model_name)
+            self.roberta = AutoModel.from_pretrained(model_name)
             self.fc1 = nn.Linear(self.roberta.config.hidden_size, hidden_size)
             self.relu = nn.ReLU()
             self.dropout = nn.Dropout(0.3)

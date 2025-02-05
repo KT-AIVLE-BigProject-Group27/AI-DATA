@@ -1,10 +1,9 @@
 ################################################################################################
 # 필요 패키지 import
 ################################################################################################
-import subprocess, pickle, openai, torch, json, os, re, fitz, numpy as np, torch.nn as nn
+import subprocess, pickle, openai, torch, json, os, re, fitz, win32com.client, numpy as np, torch.nn as nn
 from transformers import BertTokenizer, BertModel
 from sklearn.metrics.pairwise import cosine_similarity
-
 from transformers import BartForConditionalGeneration, PreTrainedTokenizerFast
 
 
@@ -66,6 +65,26 @@ def extract_text_from_pdf(pdf_path):
     text = text.replace('\n', ' ')
     text = re.sub(r'-\s?\d+\s?-', '', text)
     return text
+# pip install pywin32
+################################################################################################
+# 한글파일 pdf 변환
+################################################################################################
+def convert_hwp_to_pdf(hwp_path, pdf_path):
+    hwp = win32com.client.Dispatch("HWPFrame.HwpObject")
+    hwp.XHwpWindows.Item(0).Visible = False
+    hwp.RegisterModule("FilePathCheckDLL", "FileAuto")
+    hwp.SetMessageBoxMode(2)
+    try:
+        hwp.Open(hwp_path)
+        hwp.SaveAs(pdf_path, "PDF")
+        print(f"✅ 변환 완료: {pdf_path}")
+        return True  # 변환 성공
+    except Exception as e:
+        print(f"❌ 변환 실패: {hwp_path} - 오류: {e}")
+        return False  # 변환 실패
+    finally:
+        hwp.Clear(3)
+        hwp.Quit()
 ################################################################################################
 # # 날짜 형식 변형 (예: 2023. 01. 01. => 2023-01-01)
 ################################################################################################
