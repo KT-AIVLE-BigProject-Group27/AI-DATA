@@ -61,7 +61,7 @@ def preprocess_function(examples):
 
 
 # 모델 결과 저장 및 비교를 위한 기본 경로
-base_save_path = os.path.join("C:/Model/ver2", "summarization_comparison")
+base_save_path = os.path.join("E:/Model/ver2", "summarization_comparison")
 os.makedirs(base_save_path, exist_ok=True)
 
 # 데이터 로드 (CSV 파일, 컬럼: "input", "summary")
@@ -117,7 +117,7 @@ models_info = [
 ]
 
 # 학습 파라미터 설정
-num_train_epochs = 3
+num_train_epochs = 1000
 per_device_train_batch_size = 4
 per_device_eval_batch_size = 4
 learning_rate = 2e-5
@@ -147,15 +147,22 @@ for model_label, get_model_fn in models_info:
         preprocess_function, batched=True, remove_columns=val_dataset.column_names
     )
 
+    def compute_metrics(eval_pred):
+        return compute_metrics_fn(eval_pred, tokenizer)
+
     # 6. TrainingArguments 설정 (학습 관련 인자들 지정)
     training_args = Seq2SeqTrainingArguments(
         output_dir=os.path.join(cur_save_path, "results"),
         evaluation_strategy="epoch",
+        save_strategy="epoch",  # 매 epoch마다 저장
+        save_total_limit=3,
+        load_best_model_at_end=True,  # 🔹 가장 좋은 모델 저장 (restore_best_weights 포함)
+        metric_for_best_model="eval_loss",  # 🔹 평가 기준 (eval_loss가 가장 낮을 때 저장)
+        greater_is_better=False,  # 🔹 Loss는 낮을수록 좋음
         learning_rate=learning_rate,
         per_device_train_batch_size=per_device_train_batch_size,
         per_device_eval_batch_size=per_device_eval_batch_size,
         weight_decay=0.01,
-        save_total_limit=3,
         num_train_epochs=num_train_epochs,
         predict_with_generate=True,
         fp16=True if device.type == "cuda" else False,
@@ -163,18 +170,17 @@ for model_label, get_model_fn in models_info:
         remove_unused_columns=False,  # "No columns" 에러 방지를 위해 사용
     )
 
-    # 7. 평가 지표 함수 정의
-    def compute_metrics(eval_pred):
-        return compute_metrics_fn(eval_pred, tokenizer)
-
     # 8. Seq2SeqTrainer 설정 (모델, 데이터셋, 토크나이저, 평가 함수 등 등록)
+    from transformers import EarlyStoppingCallback
+
     trainer = Seq2SeqTrainer(
         model=model,
         args=training_args,
         train_dataset=tokenized_train,
         eval_dataset=tokenized_val,
         tokenizer=tokenizer,
-        compute_metrics=compute_metrics
+        compute_metrics=compute_metrics,
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=10)]  # 🔹 Early Stopping 적용
     )
 
     # 9. 모델 학습 실행
@@ -217,7 +223,7 @@ models_info = [
     ("kobart", get_kobart_model),
 ]
 results = []  # 각 모델 평가 지표 저장
-base_save_path = "C:/Model/ver2/summarization_comparison/"  # 저장된 모델들이 위치한 기본 경로 (예시)
+base_save_path = "E:/Model/ver2/summarization_comparison/"  # 저장된 모델들이 위치한 기본 경로 (예시)
 
 for model_label, get_model_fn in models_info:
     print("\n" + "=" * 50)
