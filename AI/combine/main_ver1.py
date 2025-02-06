@@ -1,9 +1,9 @@
 import os, sys, pandas as pd
 sys.path.append(os.path.abspath("./AI/combine"))
-import modularization_ver3 as mo
+import modularization_ver5 as mo
 contract_hwp_path ='C:/Users/User/Desktop/AI-DATA/Data_Analysis/Contract/'
 mo.initialize_models()
-hwp_files = [ file for file in os.listdir(contract_hwp_path) if file.endswith(".hwp")]
+hwp_files = [ file for file in os.listdir(contract_hwp_path) if file.endswith(".pdf")]
 results = {}
 all_results = []
 for hwp_file in hwp_files:
