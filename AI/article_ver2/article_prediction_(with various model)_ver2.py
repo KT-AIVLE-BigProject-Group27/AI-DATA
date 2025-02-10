@@ -67,7 +67,7 @@ def warmup_scheduler(optimizer, num_warmup_steps, num_training_steps):
 # (1) 데이터 로드 및 전처리 (공통)
 ##############################################
 # 모델 결과 저장 및 비교를 위한 기본 경로
-name = 'article_prediction_ver2_비교'
+name = 'article_prediction_ver2_비교_2'
 base_save_path = os.path.join("E:/Model/ver2", name)
 os.makedirs(base_save_path, exist_ok=True)
 
@@ -92,6 +92,7 @@ for file in files_to_merge:
     df = pd.read_csv(file_path)
     merged_df = pd.concat([merged_df, df], ignore_index=True)
 merged_df["article_number"] = merged_df["article_number"].astype(str)
+merged_df["law_article"] = merged_df["law_article"].astype(str)
 print(f'merged_df: {len(merged_df)}')
 
 merged_df["sentence"] = merged_df.apply(
@@ -100,18 +101,18 @@ merged_df["sentence"] = merged_df.apply(
 
 df_unfair = merged_df[merged_df["unfair_label"] == 1].reset_index(drop=True)
 
-article_to_idx = {article: idx for idx, article in enumerate(df_unfair["article_number"].unique())}
+article_to_idx = {article: idx for idx, article in enumerate(df_unfair["law_article"].unique())}
 idx_to_article = {idx: article for article, idx in article_to_idx.items()}
 
-df_unfair["article_number"] = df_unfair["article_number"].map(article_to_idx)
+df_unfair["law_article"] = df_unfair["law_article"].map(article_to_idx)
 
 # Train/Test 분할 (stratify: article_number, unfair_label)
 x_temp, x_test, y_temp, y_test = train_test_split(
     df_unfair["sentence"].tolist(),
-    df_unfair["article_number"],
+    df_unfair["law_article"],
     test_size=0.1,
     random_state=42,
-    stratify=df_unfair["article_number"],
+    stratify=df_unfair["law_article"],
     shuffle=True
 )
 
@@ -134,17 +135,12 @@ print(f'X_train: {len(X_train)}, X_val: {len(X_val)}, x_test: {len(x_test)}')
 # 모델 리스트 (label과 생성 함수)
 models_info = [
     ("KLUE-BERT", get_KLUE_BERT_model),
-    ("KoBERT", get_KoBERT_model),
-    ("KoELECTRA", get_KoELECTRA_model),
-    ("KLUE-RoBERTa", get_KLUE_Roberta_model),
-    ("KoSBERT", get_KoSBERT_model),
-    ("XLM-RoBERTa", get_XLMRoberta_model)
 ]
 
 # 학습 파라미터
 batch_size = 16
 learning_rate = 0.00002
-num_epochs = 1000  # 데모용: 실제 실험에서는 epochs=1000, patience=10 등으로 설정할 수 있음
+num_epochs = 50  # 데모용: 실제 실험에서는 epochs=1000, patience=10 등으로 설정할 수 있음
 patience = 10
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -158,7 +154,8 @@ for model_label, get_model_fn in models_info:
     print(f"모델: {model_label} 학습 시작")
 
     # 각 모델 전용 save 경로 및 파일 설정
-    cur_save_path = os.path.join(base_save_path, model_label)
+    cur_save_path = os.path.join(base_save_path, model_label) +'/'
+
     os.makedirs(cur_save_path, exist_ok=True)
     model_file = os.path.join(cur_save_path, f"{model_label}_mlp.pth")
 
@@ -183,7 +180,7 @@ for model_label, get_model_fn in models_info:
     num_training_steps = len(train_loader) * 10
     num_warmup_steps = int(0.1 * num_training_steps)
     warmup_sched = warmup_scheduler(optimizer, num_warmup_steps, num_training_steps)
-    reduce_sched = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, factor=0.5, verbose=True)
+    reduce_sched = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=1, factor=0.5, verbose=True)
 
     # 학습 실행 (train_model 함수는 내부에서 손실 그래프 등도 저장)
     train_model(model, optimizer, criterion, device, train_loader, val_loader,
@@ -198,27 +195,33 @@ models_info = [
     ("KoSBERT", get_KoSBERT_model),
     ("XLM-RoBERTa", get_XLMRoberta_model)
 ]
+
 for model_label, get_model_fn in models_info:
     print("\n" + "=" * 50)
-    print(f"모델: {model_label} 학습 시작")
+    print(f"모델: {model_label} Test 시작")
 
     # 각 모델 전용 save 경로 및 파일 설정
     cur_save_path = os.path.join(base_save_path, model_label)
-    os.makedirs(cur_save_path, exist_ok=True)
     model_file = os.path.join(cur_save_path, f"{model_label}_mlp.pth")
 
     # 모델과 토크나이저 생성
     model, tokenizer = get_model_fn(num_classes = len(idx_to_article), hidden_size=256)
     model = model.to(device)
-    # 모델 로드 (학습 시 best state 저장된 파일에서 로드)
-    model.load_state_dict(torch.load(model_file, map_location=device))
-    model.eval()
+    # 저장된 학습 모델 가중치 불러오기
+    model.load_state_dict(torch.load(model_file))
+    model.eval()  # 평가 모드로 전환
+
+    # if os.path.exists(model_file):
+    #     file_size_mb = os.path.getsize(model_file) / (1024 * 1024)  # MB 단위로 변환
+    #     print(f"모델: {model_label}, 파일 크기: {file_size_mb:.2f} MB")
+    # else:
+    #     print(f"모델 가중치 파일 {model_file}을 찾을 수 없습니다.")
 
     # 테스트: x_test에 대해 예측 수행 (모델별 tokenizer 사용)
     y_pred = []
     y_true = []
 
-    for sentence, label in zip(x_test, y_test["article_number"]):
+    for sentence, label in zip(x_test, y_test):
         result = predict_article(model, tokenizer, sentence)
         predicted_label_idx = result['predicted_article']
         true_article = idx_to_article[label]
@@ -275,4 +278,4 @@ plt.suptitle("모델별 성능 비교", fontsize=16)
 comparison_plot_file = os.path.join(base_save_path, "model_comparison.png")
 plt.tight_layout()
 plt.savefig(comparison_plot_file)
-plt.show()
+plt.close()

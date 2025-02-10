@@ -185,6 +185,31 @@ def find_threshold_grid_f1(model, train_loader=None, val_loader=None, use_train=
     print(f"[Grid-F1] Optimal threshold: {best_threshold:.4f} (F1: {best_f1:.4f})")
     return best_threshold
 
+
+def find_threshold_recall(model, train_loader=None, val_loader=None, use_train=False, device="cuda"):
+    """
+    Recall을 최대화하는 임계값을 찾습니다.
+    """
+    y_probs, y_true = np.array([]), np.array([])
+    if use_train and train_loader is not None:
+        probs, labels = collect_predictions(model, train_loader, device)
+        y_probs = np.concatenate([y_probs, probs]) if y_probs.size else probs
+        y_true = np.concatenate([y_true, labels]) if y_true.size else labels
+    if val_loader is not None:
+        probs, labels = collect_predictions(model, val_loader, device)
+        y_probs = np.concatenate([y_probs, probs]) if y_probs.size else probs
+        y_true = np.concatenate([y_true, labels]) if y_true.size else labels
+
+    precisions, recalls, thresholds = precision_recall_curve(y_true, y_probs)
+
+    # Recall이 최대가 되는 임계값 찾기
+    optimal_idx = np.argmax(recalls)
+    optimal_threshold = thresholds[optimal_idx]
+
+    print(f"[Recall-Max] Optimal threshold: {optimal_threshold:.4f}, Recall: {recalls[optimal_idx]:.4f}")
+    return optimal_threshold
+
+
 #####################################################################
 # 5. 고정 임계값
 def find_threshold_fixed(model, train_loader=None, val_loader=None, use_train=False, device="cuda", fixed_value=0.5):
@@ -298,6 +323,7 @@ def find_all_thresholds(model,tokenizer ,data_kind, use_train=False, device="cud
     thresholds['pr'] = find_threshold_pr(model, train_loader, val_loader, use_train, device)
     thresholds['grid_f1'] = find_threshold_grid_f1(model, train_loader, val_loader, use_train, device)
     thresholds['fixed'] = find_threshold_fixed(model, train_loader, val_loader, use_train, device)
+    thresholds['recall'] = find_threshold_recall(model, train_loader, val_loader, use_train, device)
     return thresholds
 
 def tokenize_data(sentences, tokenizer, max_length=256):
