@@ -191,24 +191,52 @@ import sys
 sys.path.append(os.path.abspath("./AI"))
 from threshold_settings import find_all_thresholds
 from sklearn.metrics import accuracy_score
-thresholds = find_all_thresholds(loaded_model,tokenizer ,'toxic', use_train=False, device="cuda")
+import sys
+import os
+import pandas as pd
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+
+thresholds = find_all_thresholds(loaded_model,tokenizer ,'toxic', use_train=True, device="cuda")
 print("Computed thresholds:", thresholds)
 
 # 여러 임계값을 적용하여 정확도 비교
-accuracy_results = {}
-
+evaluation_results = []
 for name, threshold in thresholds.items():
     # 각 임계값을 기준으로 위반(불공정) 예측
     df[f'predicted_toxic_{name}'] = df["toxic_probability"].apply(lambda x: 1 if x >= threshold else 0)
 
-    # 정확도 계산
+    # 지표 계산
     accuracy = accuracy_score(df["toxic_label"], df[f'predicted_toxic_{name}'])
-    accuracy_results[name] = accuracy
+    precision = precision_score(df["toxic_label"], df[f'predicted_toxic_{name}'])
+    recall = recall_score(df["toxic_label"], df[f'predicted_toxic_{name}'])
+    f1 = f1_score(df["toxic_label"], df[f'predicted_toxic_{name}'])
+    roc_auc = roc_auc_score(df["toxic_label"], df["toxic_probability"])  # 확률 기반 ROC-AUC 계산
 
-# 최적의 임계값 선택 (정확도가 가장 높은 값)
-best_threshold = max(accuracy_results, key=accuracy_results.get)
-best_accuracy = accuracy_results[best_threshold]
+    # 결과 저장
+    evaluation_results.append({
+        "Threshold Name": name,
+        "Threshold Value": threshold,
+        "Accuracy": accuracy,
+        "Precision": precision,
+        "Recall": recall,
+        "F1-Score": f1,
+        "ROC-AUC": roc_auc
+    })
 
-# 결과 출력
-print(f"✅ 최적의 임계값: {best_threshold} ({thresholds[best_threshold]:.4f})")
-print(f"✅ 최적 임계값 적용 시 정확도: {best_accuracy:.4f}")
+# 데이터프레임으로 변환
+results_df = pd.DataFrame(evaluation_results)
+
+# 최적의 임계값 선택 (F1-Score 기준)
+best_threshold_row = results_df.loc[results_df["F1-Score"].idxmax()]
+best_threshold_name = best_threshold_row["Threshold Name"]
+best_threshold_value = best_threshold_row["Threshold Value"]
+
+# 최적 결과 출력
+print(f"✅ 최적의 임계값: {best_threshold_name} ({best_threshold_value:.4f})")
+print(f"✅ 최적 임계값 적용 시 결과:")
+print(best_threshold_row)
+
+
+import pandas as pd
+# 모든 행 출력 설정
+pd.set_option('display.max_columns', None)
