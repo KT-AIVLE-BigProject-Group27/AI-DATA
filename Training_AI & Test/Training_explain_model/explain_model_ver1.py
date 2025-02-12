@@ -12,50 +12,60 @@ def load_json(filename):
     with open(filename, "r", encoding="utf-8") as file:
         return json.load(file)
 
-def get_explanation(sentence, unfair_label, toxic_label, law=None):
+def explanation_AI(sentence, unfair_label, toxic_label, law=None):
+    with open('./Module/Key/openAI_key.txt', 'r') as file:
+        openai.api_key = file.readline().strip()
+    os.environ['OPENAI_API_KEY'] = openai.api_key
+    client = openai.OpenAI()
     if unfair_label == 0 and toxic_label == 0:
         return None
-    prompt = f"""
-        아래 계약 조항이 특정 법률을 위반하는지 분석하고, 조항(제n조), 항(제m항), 호(제z호) 형식으로 **명확하고 간결하게** 설명하세요.
-        📌 **설명할 때는 사용자에게 직접 말하는 듯한 자연스러운 문장으로 구성하세요.**
-        📌 **한눈에 보기 쉽도록 짧고 명확한 문장을 사용하세요.**
-        📌 **불공정 라벨이 1인 경우에는 불공정에 관한 설명만 하고, 독소 라벨이 1인 경우에는 독소에 관한 설명한 하세요**
 
-        계약 조항: "{sentence}"
-        불공정 라벨: {unfair_label} (1일 경우 불공정)
-        독소 라벨: {toxic_label} (1일 경우 독소)   
-        {f"관련 법 조항: {law}" if law else "관련 법 조항 없음"}
+    if unfair_label == 1:
+        prompt = f"""
+            아래 계약 조항이 **대규모유통업법**을 위반하는지 분석하고, 해당 법 조항(제n조 제m항 제z호)에 따른 위반 여부를 명확하게 설명하세요.
 
-        🔴 **불공정 조항일 경우:**
-        1️⃣ **위반된 법 조항을 '제n조 제m항 제z호' 형식으로 먼저 말해주세요.**
-        2️⃣ **위반 이유를 간결하게 설명하세요.**
-        3️⃣ **설명은 '🚨 법 위반!', '🔍 이유' 순서로 구성하세요.**
+            - 계약 조항: "{sentence}"
+            - 관련 법 조항: {law if law else "관련 법 조항 없음"}
 
-        ⚫ **독소 조항일 경우:**
-        1️⃣ **법 위반이 아니라면, 해당 조항이 계약 당사자에게 어떤 위험을 초래하는지 설명하세요.**
-        2️⃣ **구체적인 문제점을 짧고 명확한 문장으로 설명하세요.**
-        3️⃣ **설명은 '💀 독소 조항', '🔍 이유' 순서로 구성하세요.**
+            **설명 형식:**  
+            - 위반 여부를 명확히 판단하고, 관련 법 조항(제n조 제m항 제z호)을 정확하게 기재하세요.  
+            - 제공된 법 조항이 적절하지 않다면, GPT가 판단하여 대규모유통업법의 적절한 조항을 직접 사용하세요.  
+            - 위반 사유를 계약 당사자의 불이익과 법적 근거를 들어 논리적으로 설명하세요.  
+            - 반드시 문장의 끝을 "~한 이유로 위법 조항입니다."로 마무리하세요.
+            - "독소조항"이라는 표현을 사용하지 마세요.
 
-        ⚠️ 참고: 제공된 법 조항이 실제로 위반된 조항이 아닐 경우, **GPT가 판단한 적절한 법 조항을 직접 사용하여 설명하세요.** 
-        그러나 원래 제공된 법 조항과 비교하여 반박하는 방식으로 설명하지 마세요.
-    """
+            **예시:**  
+            "해당 조항은 대규모유통업법 제n조 제m항 제z호를 위반하였습니다. 이유는 ~~~ 때문입니다. "
+        """
+    elif toxic_label == 1:
+        prompt = f"""
+            아래 계약 조항이 독소 조항인지 분석하고, 을(계약 상대방)에게 불리한 조항이라면 그 이유를 설명하세요.
 
-    # OpenAI API 호출
+            - 계약 조항: "{sentence}"
+
+            **설명 형식:**  
+            - 법 위반 여부가 아닌 을에게 불리한 점을 중심으로 설명하세요.  
+            - 을이 불공정한 부담을 지거나 계약상 권리가 제한되는 부분을 강조하세요.  
+
+            **예시:**  
+            "이 조항은 ~~한 이유로 을에게 불리한 독소 조항입니다."
+        """
+
     response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "system", "content":
-                                                "당신은 계약서 조항이 특정 법률을 위반하는지 분석하는 법률 전문가입니다. \
-                                                불공정 조항의 경우, 어떤 법 조항을 위반했는지 조항(제n조), 항(제m항), 호(제z호) 형식으로 정확히 명시한 후 설명하세요. \
-                                                만약 제공된 법 조항이 실제로 위반된 조항이 아니라면, GPT가 판단한 적절한 법 조항을 사용하여 설명하세요. \
-                                                독소 조항은 법률 위반이 아니라 계약 당사자에게 미치는 위험성을 중심으로 설명하세요."
-                   },
-                  {"role": "user", "content": prompt}],
+        model="gpt-4-turbo",
+        messages=[
+            {"role": "system",
+             "content": "당신은 계약 조항의 법률 위반 여부와 독소 조항 여부를 분석하는 전문가입니다. "
+                        "불공정 조항의 경우, 관련 법 조항을 명확히 기재한 후, 위반 사유를 논리적으로 설명하세요. "
+                        "독소 조항의 경우, 을(계약 상대방)이 불리한 점을 중심으로 설명하세요. "
+                        "반드시 200 tokens 이하로 작성하세요."},
+            {"role": "user", "content": prompt}
+        ],
         temperature=0.7,
-        max_tokens=300
+        max_tokens=500
     ).choices[0].message.content
 
-    return response
-
+    return response.strip()
 
 def process_data(input_file, output_file):
     data = load_json(input_file)
