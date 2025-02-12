@@ -1,0 +1,52 @@
+[33m4aa86c8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mMJ[m[33m)[m UPDATE gitignore
+[33m1a8eb1e[m Merge pull request #22 from KT-AIVLE-BigProject-Group27/MJ
+[33mdc231c9[m UPDATE module
+[33m4b13c09[m Merge pull request #21 from KT-AIVLE-BigProject-Group27/JS
+[33m6aa6620[m summary_code
+[33maa45484[m Merge pull request #20 from KT-AIVLE-BigProject-Group27/GS
+[33m553448b[m summary model tuning upload
+[33m1251dad[m Merge pull request #19 from KT-AIVLE-BigProject-Group27/MJ
+[33mc0f94f1[m UPDATE explain
+[33m6ff38de[m Merge pull request #18 from KT-AIVLE-BigProject-Group27/MJ
+[33m78e7ff4[m UPDATE module
+[33m3b33889[m Merge pull request #17 from KT-AIVLE-BigProject-Group27/MJ
+[33md99a2fc[m UPDATE thresholod setting & module
+[33mc772939[m Merge pull request #16 from KT-AIVLE-BigProject-Group27/JS
+[33m7b4ed16[m modify
+[33m8868ae7[m Merge branch 'main' of https://github.com/KT-AIVLE-BigProject-Group27/AI-DATA into JS
+[33mce3babc[m lg_exaone_model 동작예시 수정
+[33m1b98bb0[m Merge pull request #15 from KT-AIVLE-BigProject-Group27/JS
+[33mb87c8b4[m lg_exaone_model 동작 예시
+[33mf794690[m Merge pull request #14 from KT-AIVLE-BigProject-Group27/MJ
+[33m2d72368[m UPLOAD summary data & code
+[33m2eddfd9[m Merge pull request #13 from KT-AIVLE-BigProject-Group27/GS
+[33m2685715[m hwp path GS
+[33mdcac971[m Merge branch 'main' of https://github.com/KT-AIVLE-BigProject-Group27/AI-DATA
+[33m33f6ae4[m summary models test
+[33m1a3e4d7[m Merge pull request #12 from KT-AIVLE-BigProject-Group27/MJ
+[33mc7c5a2b[m UPLOAD New AI Training Code
+[33m1816501[m Merge pull request #11 from KT-AIVLE-BigProject-Group27/MJ
+[33m48fe0dc[m UPDATE data preprocessing(train & pipeline * preprocessing)
+[33md6a1fb4[m Merge pull request #10 from KT-AIVLE-BigProject-Group27/JS
+[33mb60ea10[m Generate_sentence
+[33m7dd1131[m Merge pull request #9 from KT-AIVLE-BigProject-Group27/MJ
+[33m5e583f4[m CREATE DATA(toxic,normal) & UPDATE preprocessing
+[33mc18ed0a[m Merge pull request #8 from KT-AIVLE-BigProject-Group27/MJ
+[33md7739b8[m CREATE FOLDER(create toxic data basic code)
+[33md90da82[m Merge pull request #7 from KT-AIVLE-BigProject-Group27/MJ
+[33ma8f2db0[m MODULARIZATION pdf_to_txt
+[33me06ef75[m Merge pull request #6 from KT-AIVLE-BigProject-Group27/MJ
+[33m676c10f[m MERGE unfair data & DESIGN AI & UPLOAD PDF_to_TXT_ver1
+[33mb96c260[m Merge pull request #5 from KT-AIVLE-BigProject-Group27/MJ
+[33mc328e80[m CREATE Data(16,17_article)
+[33m08c43ce[m Merge pull request #4 from KT-AIVLE-BigProject-Group27/MJ
+[33ma0f2663[m CREATE Data(15_article)
+[33m40a9432[m Merge pull request #3 from KT-AIVLE-BigProject-Group27/MJ
+[33m45623e4[m UPDATE create article data 2
+[33m443b4ea[m Merge pull request #2 from KT-AIVLE-BigProject-Group27/MJ
+[33m1150353[m UPDATE create article 14 data
+[33m593e7d2[m Create Data(14_article)
+[33m3c065c5[m Merge pull request #1 from KT-AIVLE-BigProject-Group27/MJ
+[33m787e091[m CREATE unfair data
+[33m238bee9[m[33m ([m[1;31morigin/JS[m[33m, [m[1;31morigin/GS[m[33m, [m[1;32mmain[m[33m, [m[1;32mJS[m[33m, [m[1;32mGS[m[33m)[m Delete Fast_Api directory
+[33md7329dd[m Initial commit: Uploading project files
