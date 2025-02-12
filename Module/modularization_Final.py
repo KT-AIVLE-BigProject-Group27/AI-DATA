@@ -136,7 +136,7 @@ def initialize_models():
     print('summary model loading...')
     summary_model = AutoModelForCausalLM.from_pretrained('./Model/article_summary',trust_remote_code=True)
     summary_tokenizer = AutoTokenizer.from_pretrained('./Model/article_summary',trust_remote_code=True)
-    class KoBERTMLPClassifier(nn.Module):
+    class Unfair_KoBERTMLPClassifier(nn.Module):
         def __init__(self):
             super(Unfair_KoBERTMLPClassifier, self).__init__()
             self.bert = BertModel.from_pretrained("monologg/kobert")
@@ -194,15 +194,15 @@ def initialize_models():
 
     # 불공정 조항 판별 모델 로드
     print('unfair model loading...')
-    unfair_model = load_trained_model_statice(KoBERTMLPClassifier, f"./Model/unfair_identification/KoBERT_mlp.pth")
+    unfair_model = load_trained_model_statice(Unfair_KoBERTMLPClassifier, f"./Model/unfair_identification/KoBERT_mlp.pth")
     unfair_tokenizer = get_tokenizer()
     # 조항 예측 모델 로드
     print('article model loading...')
-    article_model = load_trained_model_statice(BertArticleClassifier, f"./Model//article_prediction/klue_bert_mlp.pth")
-    article_tokenizer = BertTokenizer.from_pretrained("klue/bert-base")
+    article_model = load_trained_model_statice(Article_KoBERTMLPClassifier, f"./Model//article_prediction/KoBERT_mlp.pth")
+    article_tokenizer = BertTokenizer.from_pretrained("monologg/kobert")
     # 독소 조항 판별 모델 로드
     print('toxic model loading...')
-    toxic_model = load_trained_model_statice(KoELECTRAMLPClassifier, f"./Model/toxic_identification/KoELECTRA_mlp.pth")
+    toxic_model = load_trained_model_statice(Toxic_KoELECTRAMLPClassifier, f"./Model/toxic_identification/KoELECTRA_mlp.pth")
     toxic_tokenizer =ElectraTokenizer.from_pretrained("monologg/koelectra-base-discriminator")
     # 법률 데이터 로드
     with open("./Data_Analysis/law/law_embeddings.pkl", "rb") as f:
